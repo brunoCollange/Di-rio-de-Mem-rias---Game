@@ -1,0 +1,38 @@
+erros/bugs/melhorias:
+- clicar no botão direito do mouse quando está em movimento buga o personagem
+- gifs não são reproduzidos
+- quando adicionamos uma foto antes da legenda e titulo, eles somem.
+- jogo não reconhece parágrafos nas memórias
+
+novas funcionalidades:
+- responsividade
+- poder alterar tamaho do sticker (pequeno, médio e grande)
+- colocar um background no nome dos locais (todos os nomes estão brancos, e em biomas como gelo por exemplo, ficam invisíveis)
+- poder adicionar várias imagens de uma só vez
+- pensar em uma forma de adicionar pessoas ao invés de deixar apenas locais
+- poder alterar os locais de lugar no mapa
+- poder abrir imagem em tela cheia
+- poder alterar senha dos locais protegidos depois de abertos
+
+
+resolvido:
+- musica principal bugada
+- arrumar braços do personagem
+- arrumar nome do local (novo local)
+- olhos do boneco sumir ao correr pra cima
+- musica do local em looping
+- volume da musica do local nao esta funcionando
+- adicionar adesivos em volta do local (cristo por exemplo)
+- upload de novas imagens de memorias bugado 
+- resolver adesivos redondos
+- mover o "conectado" mais pra baixo
+- melhorar legenda e painel
+- melhorar "recortar e inserir" da imagem
+- poder recortar imagem antes de inserir
+- inserir icone de lixeira pra remover musica dos locais
+- melhorar mapa e minimapa adicionando mais biomas
+- dar um zoom padrão no jogo, ao invés de ter que dar zoom pelo navegador
+- erro ao adicionar musica
+- muica nao sendo excluida da pasta depois de excluir local
+- adicionar sistema de login pra poder entrar no jogo
+- adicionar lugar secreto (nao aparece no mini-mapa e é protegido por senha)

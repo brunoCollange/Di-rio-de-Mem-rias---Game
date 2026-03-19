@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diário de Memórias</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- Single hidden file input used for all uploads — avoids pointer-events/iframe issues -->
+  <input type="file" id="global-file-input" accept="image/*" style="display:none">
+
+  <div id="login-screen"
+    style="display:none;position:fixed;inset:0;background:#060d18;align-items:center;justify-content:center;z-index:999;font-family:monospace">
+    <div
+      style="background:#07101f;border:.5px solid rgba(80,130,220,.2);border-radius:16px;width:100%;max-width:360px;overflow:hidden">
+      <div
+        style="padding:24px 28px 18px;border-bottom:.5px solid rgba(80,130,220,.1);font-size:13px;color:rgba(120,170,255,.5);letter-spacing:2px;text-transform:uppercase">
+        Memories Game
+      </div>
+      <form id="login-form" style="padding:24px 28px;display:flex;flex-direction:column;gap:14px">
+        <input id="login-user" type="text" placeholder="usuário" autocomplete="username"
+          style="background:#071020;border:.5px solid rgba(80,130,220,.2);border-radius:8px;padding:10px 13px;color:#c0d8f8;font-size:14px;font-family:monospace;outline:none;width:100%">
+        <input id="login-pass" type="password" placeholder="senha" autocomplete="current-password"
+          style="background:#071020;border:.5px solid rgba(80,130,220,.2);border-radius:8px;padding:10px 13px;color:#c0d8f8;font-size:14px;font-family:monospace;outline:none;width:100%">
+        <div id="login-error" style="font-size:12px;color:#f09080;min-height:16px"></div>
+        <button id="login-btn" type="submit"
+          style="background:rgba(60,120,220,.15);border:.5px solid rgba(80,140,255,.3);border-radius:8px;padding:11px;color:#90b8ff;font-size:13px;cursor:pointer;font-family:monospace;letter-spacing:1px">
+          Entrar
+        </button>
+      </form>
+      <div
+        style="padding:24px 28px 18px;border-bottom:.5px solid rgba(80,130,220,.1);font-size:13px;color:rgba(120,170,255,.5);letter-spacing:2px;text-transform:uppercase">
+        Developed by Bruno Collange <br> &copy Colliveir Development
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <canvas id="gc"></canvas>
+    <button id="pfbtn" onclick="openPanel()">⚙ Painel</button>
+    <div id="runind"> ⚡ </div>
+    <div id="place-ind">+ local criado</div>
+    <div id="net-status">● conectado</div>
+
+    <!-- Confirm dialog (replaces window.confirm) -->
+    <div class="overlay" id="confirm-overlay">
+      <div id="confirm-box">
+        <div id="confirm-msg"></div>
+        <div id="confirm-footer">
+          <button class="btn btn-dim" id="confirm-no">Cancelar</button>
+          <button class="btn btn-red" id="confirm-yes">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memory modal -->
+    <div class="overlay" id="vmodal">
+      <div id="vcard">
+        <div id="vhead">
+          <span id="vname-display"></span>
+          <div id="vname-edit-form" style="display:none;flex:1;align-items:center;gap:6px;min-width:0">
+            <input id="vname-input" placeholder="Nome do local…">
+            <button id="vname-save-btn" class="btn btn-blue btn-sm">Salvar</button>
+            <button id="vname-cancel-btn" class="btn btn-red btn-sm">Cancelar</button>
+          </div>
+          <div id="vhead-actions"></div>
+        </div>
+        <div id="vspot-music"></div>
+        <div id="vbody"></div>
+        <div id="vadd-row">
+          <div class="vadd-btn" onclick="addEntry()">
+            <span style="font-size:13px;color:rgba(80,130,220,.3)">＋</span>
+            <span>Adicionar memória neste local</span>
+          </div>
+        </div>
+        <div id="vfooter">
+          <span id="vcount"></span>
+          <button class="btn btn-dim" onclick="closeV()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel -->
+    <div class="overlay" id="pmodal">
+      <div id="pcard">
+        <div id="phead"><span id="phead-title">Painel</span><button class="btn btn-dim btn-sm"
+            onclick="closePanel()">✕</button></div>
+        <div id="pbody">
+          <div class="pkeys">
+            <div class="pkey-row"><b>WASD / setas</b> = Mover</div>
+            <div class="pkey-row"><b>Shift</b> = Correr</div>
+            <div class="pkey-row"><b>F</b> = Interação</div>
+            <div class="pkey-row"><b>Espaço</b> = Criar Novo Local</div>
+            <div class="pkey-row"><b>Esc</b> = Abrir / Fechar Painel</div>
+          </div>
+          <div class="pvol">
+            <div class="pvol-row">
+              <span class="pvol-label">♪ Música principal</span>
+              <span class="pvol-val" id="vol-display">10%</span>
+            </div>
+            <input type="range" id="vol-slider" min="0" max="100" value="10">
+          </div>
+          <div class="pvol">
+            <div class="pvol-row">
+              <span class="pvol-label">♪ Música dos locais</span>
+              <span class="pvol-val" id="vol-spot-display">100%</span>
+            </div>
+            <input type="range" id="vol-spot-slider" min="0" max="100" value="100">
+          </div>
+          <div class="pvol">
+            <div class="pvol-row">
+              <span class="pvol-label">Alterar Cor do Personagem:</span>
+              <input type="color" id="player-color-picker" value="#9b8ee0"
+                style="width:28px;height:20px;border:none;background:none;cursor:pointer;padding:0">
+            </div>
+          </div>
+        </div>
+        <div id="pfoot">
+          <button class="btn btn-red" onclick="logout()">➜] Logout</button>
+          <button class="btn btn-dim" onclick="restartPos()">↺ Reiniciar Posição</button>
+          <button class="btn btn-dim" onclick="closePanel()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de adesivo -->
+    <div id="sticker-modal">
+      <div id="sticker-box">
+        <div id="sticker-head">
+          <span>+ adesivo</span>
+          <button class="btn btn-dim btn-sm" id="sticker-close-btn">✕</button>
+        </div>
+        <div id="sticker-body">
+          <p class="sticker-hint">Escolha uma imagem para colocar aqui no mapa. Ela ficará fixada neste ponto.</p>
+          <input type="file" id="sticker-file-input" accept="image/*" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px">
+            <img id="sticker-preview">
+            <button class="btn btn-blue" id="sticker-pick-btn">＋ Escolher imagem</button>
+          </div>
+        </div>
+        <div id="sticker-foot">
+          <button class="btn btn-red" id="sticker-cancel-btn">Cancelar</button>
+          <button class="btn btn-blue" id="sticker-confirm-btn" disabled>Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crop modal -->
+    <div id="crop-overlay">
+      <span id="crop-title">recortar imagem</span>
+      <div id="crop-wrap">
+        <img id="crop-img" draggable="false">
+        <div id="crop-box">
+          <div class="crop-handle tl" data-h="tl"></div>
+          <div class="crop-handle tr" data-h="tr"></div>
+          <div class="crop-handle bl" data-h="bl"></div>
+          <div class="crop-handle br" data-h="br"></div>
+        </div>
+      </div>
+      <div id="crop-footer">
+        <button class="btn btn-red" id="crop-cancel-btn">Cancelar</button>
+        <button class="btn btn-blue" id="crop-confirm-btn">Confirmar</button>
+      </div>
+    </div>
+
+    <!-- Modal local secreto — criação -->
+    <div id="secret-create-modal"
+      style="display:none;position:fixed;inset:0;background:rgba(2,6,18,.95);align-items:center;justify-content:center;z-index:30;padding:16px">
+      <div
+        style="background:#100a1f;border:.5px solid rgba(160,80,220,.25);border-radius:16px;width:100%;max-width:420px;overflow:hidden">
+        <div
+          style="padding:18px 24px;border-bottom:.5px solid rgba(160,80,220,.12);font-size:13px;color:rgba(180,120,255,.5);letter-spacing:2px;text-transform:uppercase">
+          🔒 Local secreto</div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+          <input id="secret-name-in" placeholder="nome do local…"
+            style="background:#0d0720;border:.5px solid rgba(160,80,220,.2);border-radius:8px;padding:10px 13px;color:#d0b8ff;font-size:14px;font-family:monospace;outline:none;width:100%">
+          <input id="secret-pw-in" type="password" placeholder="senha de acesso…" autocomplete="new-password"
+            style="background:#0d0720;border:.5px solid rgba(160,80,220,.2);border-radius:8px;padding:10px 13px;color:#d0b8ff;font-size:14px;font-family:monospace;outline:none;width:100%">
+          <input id="secret-pw2-in" type="password" placeholder="confirmar senha…" autocomplete="new-password"
+            style="background:#0d0720;border:.5px solid rgba(160,80,220,.2);border-radius:8px;padding:10px 13px;color:#d0b8ff;font-size:14px;font-family:monospace;outline:none;width:100%">
+          <div id="secret-create-err" style="font-size:12px;color:#f09080;min-height:16px"></div>
+        </div>
+        <div
+          style="padding:12px 22px;border-top:.5px solid rgba(160,80,220,.1);display:flex;justify-content:flex-end;gap:9px">
+          <button class="btn btn-dim" onclick="closeSecretCreate()">Cancelar</button>
+          <button class="btn"
+            style="background:rgba(140,60,220,.15);border:.5px solid rgba(160,80,220,.4);color:#c090ff"
+            onclick="submitSecretCreate()">🔒 Criar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal local secreto — senha de acesso -->
+    <div id="secret-unlock-modal"
+      style="display:none;position:fixed;inset:0;background:rgba(2,6,18,.95);align-items:center;justify-content:center;z-index:30;padding:16px">
+      <div
+        style="background:#100a1f;border:.5px solid rgba(160,80,220,.25);border-radius:16px;width:100%;max-width:380px;overflow:hidden">
+        <div
+          style="padding:18px 24px;border-bottom:.5px solid rgba(160,80,220,.12);font-size:13px;color:rgba(180,120,255,.5);letter-spacing:2px;text-transform:uppercase">
+          🔒 Local protegido</div>
+        <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-size:13px;color:rgba(180,140,255,.5);font-family:sans-serif">Insira a senha para acessar este
+            local.</div>
+          <input id="unlock-pw-in" type="password" placeholder="senha…" autocomplete="off"
+            style="background:#0d0720;border:.5px solid rgba(160,80,220,.2);border-radius:8px;padding:10px 13px;color:#d0b8ff;font-size:14px;font-family:monospace;outline:none;width:100%">
+          <div id="unlock-err" style="font-size:12px;color:#f09080;min-height:16px"></div>
+        </div>
+        <div
+          style="padding:12px 22px;border-top:.5px solid rgba(160,80,220,.1);display:flex;justify-content:flex-end;gap:9px">
+          <button class="btn btn-dim" onclick="closeSecretUnlock()">Cancelar</button>
+          <button class="btn"
+            style="background:rgba(140,60,220,.15);border:.5px solid rgba(160,80,220,.4);color:#c090ff"
+            onclick="submitSecretUnlock()">Entrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    // ── AUTH ─────────────────────────────────────────────────
+    async function checkAuth() {
+      const res = await fetch('./api/auth.php?action=check').then(r => r.json());
+      if (!res.ok) {
+        showLogin();
+      } else {
+        loadSpots().then(() => loop());
+      }
+    }
+
+    function showLogin() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+
+    function hideLogin() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const err = document.getElementById('login-error');
+      btn.disabled = true; btn.textContent = 'entrando…';
+      err.textContent = '';
+      const res = await fetch('./api/auth.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('login-user').value.trim(),
+          password: document.getElementById('login-pass').value
+        })
+      }).then(r => r.json());
+      if (res.ok) {
+        hideLogin();
+        loadSpots().then(() => loop());
+      } else {
+        err.textContent = res.error || 'Erro ao entrar';
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    });
+
+    const API = './api/index.php';
+
+    // ═══════════════════════════════════════════════════════
+    //  API helpers
+    // ═══════════════════════════════════════════════════════
+    async function api(action, body = null) {
+      const opts = { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(`${API}?action=${action}`, opts);
+      return r.json();
+    }
+
+    async function apiUpload(memoryId, file) {
+      const fd = new FormData();
+      fd.append('memory_id', memoryId);
+      fd.append('image', file);
+      const r = await fetch(`${API}?action=memory_upload`, { method: 'POST', body: fd });
+      return r.json();
+    }
+
+    async function logout() {
+      await fetch('./api/auth.php?action=logout');
+      location.reload();
+    }
+
+    function setNetStatus(ok) {
+      const el = document.getElementById('net-status');
+      el.textContent = ok ? '● conectado' : '● sem conexão com o servidor';
+      el.style.color = ok ? 'rgb(35, 189, 0)' : 'rgba(255,100,80,.6)';
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  CONFIRM  (sem window.confirm — funciona em qualquer contexto)
+    // ═══════════════════════════════════════════════════════
+    function askConfirm(msg) {
+      return new Promise(resolve => {
+        document.getElementById('confirm-msg').textContent = msg;
+        document.getElementById('confirm-overlay').classList.add('open');
+        const yes = document.getElementById('confirm-yes');
+        const no = document.getElementById('confirm-no');
+        function cleanup(val) {
+          document.getElementById('confirm-overlay').classList.remove('open');
+          yes.removeEventListener('click', onYes);
+          no.removeEventListener('click', onNo);
+          resolve(val);
+        }
+        const onYes = () => cleanup(true);
+        const onNo = () => cleanup(false);
+        yes.addEventListener('click', onYes);
+        no.addEventListener('click', onNo);
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  WORLD / CANVAS
+    // ═══════════════════════════════════════════════════════
+    const S = 2; // fator de escala global
+    const WORLD_W = 3200, WORLD_H = 2000, T = 32 * S;
+    const canvas = document.getElementById('gc'), ctx = canvas.getContext('2d');
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const gCvs = document.createElement('canvas');
+    gCvs.width = WORLD_W; gCvs.height = WORLD_H;
+    const gc2 = gCvs.getContext('2d');
+
+    const mmCvs = document.createElement('canvas');
+    mmCvs.width = 96; mmCvs.height = 66;
+    const mmCtx = mmCvs.getContext('2d');
+
+    let spots = [];   // loaded from API
+    let stickers = []; // adesivos no mapa
+    const stickerImgCache = {};
+
+    function bakeGrass() {
+      const cols = Math.ceil(WORLD_W / T) + 1, rows = Math.ceil(WORLD_H / T) + 1;
+
+      function rng(x, y) { let h = x * 374761393 + y * 668265263; h = (h ^ (h >> 13)) * 1274126177; return ((h ^ (h >> 16)) >>> 0) / 4294967296; }
+
+      // Noise suave — interpola entre 4 vizinhos (para ondular bordas)
+      function snoise(x, y, scale) {
+        const gx = x / scale, gy = y / scale;
+        const ix = Math.floor(gx), iy = Math.floor(gy);
+        const fx = gx - ix, fy = gy - iy;
+        const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+        return rng(ix, iy) * (1 - u) * (1 - v) + rng(ix + 1, iy) * u * (1 - v) + rng(ix, iy + 1) * (1 - u) * v + rng(ix + 1, iy + 1) * u * v;
+      }
+
+      // Biomas: paleta de tiles sólidos + detalhes + emojis
+      const BIOMES = {
+        plains: { pal: ['#2d5a1b', '#2e5c1c', '#305e1e', '#2c5819', '#336621', '#3a6e27', '#2b5617', '#316020', '#345f1d', '#28521a'], dark: 'rgba(0,0,0,0.10)', stroke: 'rgba(255,255,255,0.07)', emojis: ['🌸', '🌼', '🌿', '🍃', '🌱'], count: 50 },
+        forest: { pal: ['#1a3d0e', '#1e4510', '#163508', '#224812', '#193a0c', '#1c4010', '#152e08', '#1f4211', '#173208', '#20430f'], dark: 'rgba(0,0,0,0.20)', stroke: 'rgba(255,255,255,0.04)', emojis: ['🌲', '🌳', '🍄', '🍂', '🌿'], count: 45 },
+        snow: { pal: ['#dce8f0', '#cfe0ec', '#d8e5ee', '#c8dce8', '#e0eaf2', '#d2e2ec', '#e4ecf4', '#c5d8e6', '#dae6f0', '#ccd9e8'], dark: 'rgba(255,255,255,0.18)', stroke: 'rgba(255,255,255,0.30)', emojis: ['❄️', '🌨️', '⛄', '🌬️', '🏔️'], count: 35 },
+        nether: { pal: ['#5a1a00', '#6b1e00', '#4e1500', '#731f00', '#3d1000', '#621c00', '#4a1200', '#6e2000', '#581800', '#681b00'], dark: 'rgba(255,40,0,0.15)', stroke: 'rgba(255,80,0,0.18)', emojis: ['🔥', '💀', '🌋', '🪨', '🩸'], count: 30 },
+        swamp: { pal: ['#3d5228', '#3a4e24', '#435829', '#374a22', '#3e5425', '#415627', '#3b5023', '#445a2a', '#3f5526', '#425729'], dark: 'rgba(0,20,0,0.22)', stroke: 'rgba(100,150,50,0.08)', emojis: ['🐸', '🌾', '🍀', '🕸️', '🌿'], count: 40 },
+      };
+
+      // Posições dos centros dos biomas em coordenadas de tile (0..cols, 0..rows)
+      // Distribuídos pelo mapa para cobrir bem o espaço
+      const CENTERS = [
+        { key: 'plains', cx: 0.50, cy: 0.50 },  // centro
+        { key: 'forest', cx: 0.15, cy: 0.20 },  // canto superior esquerdo
+        { key: 'forest', cx: 0.72, cy: 0.35 },  // centro-direita
+        { key: 'snow', cx: 0.80, cy: 0.10 },  // topo direito
+        { key: 'snow', cx: 0.01, cy: 0.88 },  // baixo esquerdo
+        { key: 'nether', cx: 0.88, cy: 0.80 },  // canto inferior direito
+        { key: 'swamp', cx: 0.40, cy: 0.78 },  // baixo esquerdo-centro
+        { key: 'swamp', cx: 0.90, cy: 0.45 },  // direita centro
+        { key: 'plains', cx: 0.12, cy: 0.50 },  // esquerda
+        { key: 'plains', cx: 0.78, cy: 0.62 },  // direita baixo
+      ];
+
+      // Para cada tile: encontra o bioma cujo centro está mais próximo
+      // + jitter de noise para ondular a borda (sem blend de cor)
+      function getBiome(col, row) {
+        const nx = col / cols, ny = row / rows;
+        // jitter: desloca o ponto antes de medir distância → borda orgânica
+        const jx = (snoise(col * 0.5, row * 0.5, 8) - 0.5) * 0.18;
+        const jy = (snoise(col * 0.5 + 77, row * 0.5 + 33, 8) - 0.5) * 0.18;
+        let best = null, bestDist = Infinity;
+        for (const c of CENTERS) {
+          const dx = nx + jx - c.cx, dy = ny + jy - c.cy;
+          const d = dx * dx + dy * dy; // distância euclidiana ao quadrado
+          if (d < bestDist) { bestDist = d; best = c.key; }
+        }
+        return best;
+      }
+
+      // Pré-computa bioma de cada tile (evita recalcular nos detalhes)
+      const biomeMap = new Uint8Array(cols * rows);
+      const keys = Object.keys(BIOMES);
+      for (let row = 0; row < rows; row++)
+        for (let col = 0; col < cols; col++)
+          biomeMap[row * cols + col] = keys.indexOf(getBiome(col, row));
+
+      // Renderiza tiles
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const biome = BIOMES[keys[biomeMap[row * cols + col]]];
+          const r = rng(col, row);
+          gc2.fillStyle = biome.pal[Math.floor(r * biome.pal.length)];
+          gc2.fillRect(col * T, row * T, T, T);
+
+          if (r < 0.08) {
+            gc2.fillStyle = biome.dark;
+            gc2.fillRect(col * T + 2, row * T + 2, T - 4, T - 4);
+          }
+
+          gc2.strokeStyle = biome.stroke;
+          gc2.lineWidth = 1;
+          const bl = 2 + Math.floor(rng(col + 1, row) * 3);
+          for (let b = 0; b < bl; b++) {
+            const bx = col * T + Math.floor(rng(col + b, row + b) * T);
+            const by = row * T + Math.floor(rng(col, row + b) * T);
+            gc2.beginPath(); gc2.moveTo(bx, by);
+            gc2.lineTo(bx + Math.floor(rng(b, col) * 6) - 3, by - 4 - Math.floor(rng(b, row) * 4));
+            gc2.stroke();
+          }
+        }
+      }
+      // Emojis decorativos — só no bioma dominante do ponto
+      gc2.font = '14px serif'; gc2.textAlign = 'center'; gc2.textBaseline = 'middle';
+      const r2 = s => { let x = Math.sin(s + 1) * 43758.5453; return x - Math.floor(x); };
+      for (const [key, biome] of Object.entries(BIOMES)) {
+        const ki = keys.indexOf(key);
+        for (let i = 0; i < biome.count; i++) {
+          const seed = ki * 1000 + i;
+          const wx = r2(seed * 3.1) * WORLD_W, wy = r2(seed * 7.9) * WORLD_H;
+          const col = Math.min(cols - 1, Math.floor(wx / T));
+          const row = Math.min(rows - 1, Math.floor(wy / T));
+          if (biomeMap[row * cols + col] !== ki) continue; // só pinta se for o bioma certo
+          gc2.globalAlpha = 0.5 + r2(seed) * 0.4;
+          gc2.fillText(biome.emojis[Math.floor(r2(seed * 1.7) * biome.emojis.length)], wx, wy);
+        }
+      }
+      // Renderiza versão miniaturizada dos biomas no canvas do minimapa
+      const mmW = 96, mmH = 66;
+      mmCtx.clearRect(0, 0, mmW, mmH);
+      const scx = mmW / (cols * T), scy = mmH / (rows * T);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const biome = BIOMES[keys[biomeMap[row * cols + col]]];
+          // cor média da paleta do bioma
+          mmCtx.fillStyle = biome.pal[Math.floor(biome.pal.length / 2)];
+          mmCtx.fillRect(
+            Math.floor(col * T * scx), Math.floor(row * T * scy),
+            Math.ceil(T * scx) + 1, Math.ceil(T * scy) + 1
+          );
+        }
+      }
+      gc2.globalAlpha = 1;
+    }
+    function bakeHalo(x, y) {
+      const g = gc2.createRadialGradient(x, y, 10 * S, x, y, 90 * S);
+      g.addColorStop(0, 'rgba(255,255,200,0.1)'); g.addColorStop(1, 'rgba(255,255,200,0)');
+      gc2.fillStyle = g; gc2.beginPath(); gc2.arc(x, y, 90 * S, 0, Math.PI * 2); gc2.fill();
+    }
+    bakeGrass();
+
+    // ═══════════════════════════════════════════════════════
+    //  LOAD FROM API
+    // ═══════════════════════════════════════════════════════
+    async function loadSpots() {
+      try {
+        const data = await api('spots');
+        if (!data.ok) { setNetStatus(false); return; }
+        setNetStatus(true);
+        spots = data.spots;
+        gc2.clearRect(0, 0, WORLD_W, WORLD_H);
+        bakeGrass();
+        spots.forEach(s => bakeHalo(s.world_x, s.world_y));
+      } catch (e) { setNetStatus(false); }
+      try {
+        const sd = await api('stickers');
+        if (sd.ok) stickers = sd.stickers;
+      } catch (e) { }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  INPUT
+    // ═══════════════════════════════════════════════════════
+    const WASD = {
+      w: 'ArrowUp', a: 'ArrowLeft', s: 'ArrowDown', d: 'ArrowRight',
+      W: 'ArrowUp', A: 'ArrowLeft', S: 'ArrowDown', D: 'ArrowRight'
+    };
+    const ARROWS = new Set(['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']);
+    const held = new Set();
+
+    function isTyping() {
+      const el = document.activeElement;
+      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    }
+
+    document.addEventListener('keydown', e => {
+      if (isTyping()) return;
+      const k = WASD[e.key] || e.key;
+      if (ARROWS.has(k)) { e.preventDefault(); held.add(k); return; }
+      if (k === 'Shift') { held.add('Shift'); return; }
+      if (k === ' ') { e.preventDefault(); placeSpot(); return; }
+      if (k === 'f' || k === 'F') { if (nearSpot && !anyOpen()) openV(nearSpot); return; }
+      if (k === 'x' || k === 'X') {
+        if (anyOpen()) return;
+        // Verificar se há adesivo próximo para remover
+        const nearSticker = stickers.find(st => Math.hypot(player.x - st.world_x, player.y - st.world_y) < 52 * S);
+        if (nearSticker) {
+          askConfirm('Remover este adesivo?', { confirmText: 'remover', confirmClass: 'btn-red' }).then(ok => {
+            if (!ok) return;
+            api('sticker_delete', { id: nearSticker.id }).then(res => { if (res.ok) loadSpots(); });
+          });
+        } else {
+          if (spots.some(s => Math.hypot(player.x - s.world_x, player.y - s.world_y) < 60 * S)) {
+            showTempWarning('✕ muito próximo de um local');
+            return;
+          }
+          if (stickers.some(st => Math.hypot(player.x - st.world_x, player.y - st.world_y) < 60 * S)) {
+            showTempWarning('✕ muito próximo de um adesivo');
+            return;
+          }
+          openStickerModal(player.x, player.y);
+        }
+        return;
+      }
+      if (k === '"' || k === "'") {
+        e.preventDefault();
+        if (!anyOpen()) openSecretCreate();
+        return;
+      }
+      if (k === 'Escape') {
+        if (vOpen) { closeV(); return; }
+        if (panelOpen) { closePanel(); return; }
+        openPanel();
+      }
+    });
+    document.addEventListener('keyup', e => {
+      if (isTyping()) return;
+      held.delete(WASD[e.key] || e.key);
+    });
+    window.addEventListener('blur', () => held.clear());
+    window.addEventListener('focus', () => held.clear());
+    document.addEventListener('visibilitychange', () => held.clear());
+    document.addEventListener('focusin', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') held.clear();
+    });
+
+    function moveDX() { return held.has('ArrowLeft') ? -1 : held.has('ArrowRight') ? 1 : 0; }
+    function moveDY() { return held.has('ArrowUp') ? -1 : held.has('ArrowDown') ? 1 : 0; }
+    function anyOpen() {
+      return vOpen || panelOpen
+        || document.getElementById('secret-create-modal').style.display === 'flex'
+        || document.getElementById('secret-unlock-modal').style.display === 'flex';
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  PLACE SPOT  — Spacebar
+    // ═══════════════════════════════════════════════════════
+    function showTempWarning(msg) {
+      const el = document.getElementById('place-ind');
+      el.textContent = msg;
+      el.style.opacity = '1';
+      clearTimeout(el._t);
+      el._t = setTimeout(() => { el.style.opacity = '0'; el.textContent = '+ local criado'; }, 1500);
+    }
+
+    async function placeSpot() {
+      if (anyOpen()) return;
+      if (stickers.some(st => Math.hypot(player.x - st.world_x, player.y - st.world_y) < 60 * S)) {
+        showTempWarning('✕ muito próximo de um adesivo');
+        return;
+      }
+      try {
+        const data = await api('spot_create', { name: 'Novo local', x: player.x, y: player.y });
+        if (!data.ok) return;
+        await loadSpots();
+        const newSpot = spots.find(s => s.id === data.id);
+        const ind = document.getElementById('place-ind');
+        ind.textContent = '+ local criado'; ind.style.opacity = '1'; clearTimeout(ind._t); ind._t = setTimeout(() => ind.style.opacity = '0', 2000);
+        if (newSpot) setTimeout(() => openV(newSpot), 80);
+      } catch (e) { setNetStatus(false); }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  PLAYER
+    // ═══════════════════════════════════════════════════════
+    const player = { x: 1600, y: 1000, dir: 2, moving: false };
+    const WALK = 5, RUN = 10;
+    let playerColor = localStorage.getItem('player_color') || '#9b8ee0';
+    let nearSpot = null;
+
+    function getCamera() {
+      const vw = canvas.width, vh = canvas.height;
+      return { x: Math.max(0, Math.min(WORLD_W - vw, player.x - vw / 2)), y: Math.max(0, Math.min(WORLD_H - vh, player.y - vh / 2)), w: vw, h: vh };
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  DRAW
+    // ═══════════════════════════════════════════════════════
+    const TRASH_ICO = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+    function drawFrame() {
+      const cam = getCamera(), vw = canvas.width, vh = canvas.height;
+      ctx.drawImage(gCvs, cam.x, cam.y, vw, vh, 0, 0, vw, vh);
+      const vig = ctx.createRadialGradient(vw / 2, vh / 2, vh * .3, vw / 2, vh / 2, vh * .85);
+      vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+      ctx.fillStyle = vig; ctx.fillRect(0, 0, vw, vh);
+      const now = Date.now();
+      for (const s of spots) {
+        const sx = s.world_x - cam.x, sy = s.world_y - cam.y;
+        if (sx < -80 * S || sx > vw + 80 * S || sy < -80 * S || sy > vh + 80 * S) continue;
+        const near = nearSpot && nearSpot.id === s.id;
+        if (s.is_secret) {
+          drawSecretSpot(sx, sy, near, now);
+          if (near) { ctx.fillStyle = '#ffd060'; ctx.font = `bold ${9 * S}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('[ F ]', sx, sy - 28 * S); }
+          continue;
+        }
+        const pulse = near ? .65 + Math.sin(now / 220) * .3 : .28 + Math.sin(now / 1400 + s.world_x * .01) * .07;
+        ctx.save(); ctx.globalAlpha = pulse * .6;
+        const grd = ctx.createRadialGradient(sx, sy, 4 * S, sx, sy, near ? 32 * S : 22 * S);
+        grd.addColorStop(0, 'rgba(255,255,180,0.55)'); grd.addColorStop(1, 'rgba(255,255,180,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(sx, sy, near ? 32 * S : 22 * S, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.globalAlpha = pulse;
+        ctx.strokeStyle = near ? '#ffe87a' : 'rgba(255,230,100,0.45)'; ctx.lineWidth = near ? 2 * S : S;
+        ctx.setLineDash([4 * S, 4 * S]); ctx.beginPath(); ctx.arc(sx, sy, near ? 20 * S : 14 * S, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+        const firstMem = s.memories && s.memories[0];
+        if (firstMem && firstMem.image_url) {
+          const img = new Image(); img.src = firstMem.image_url;
+          ctx.save(); ctx.beginPath(); ctx.arc(sx, sy, 11 * S, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, sx - 11 * S, sy - 11 * S, 22 * S, 22 * S); ctx.restore();
+        } else {
+          ctx.globalAlpha = near ? 1 : .7; ctx.font = near ? `${18 * S}px serif` : `${14 * S}px serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(firstMem ? firstMem.icon || '➕' : '📍', sx, sy); ctx.globalAlpha = 1;
+        }
+        ctx.save(); ctx.globalAlpha = near ? .95 : .4;
+        ctx.font = (near ? 'bold ' : '') + `${9 * S}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = near ? '#ffe87a' : '#c8e890'; ctx.fillText(s.name, sx, sy + 30 * S); ctx.restore();
+        if (near) { ctx.fillStyle = '#ffe87a'; ctx.font = `bold ${9 * S}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText('[ F ]', sx, sy - 24 * S); }
+      }
+      // Adesivos
+      for (const st of stickers) {
+        const sx = st.world_x - cam.x, sy = st.world_y - cam.y;
+        if (sx < -60 * S || sx > vw + 60 * S || sy < -60 * S || sy > vh + 60 * S) continue;
+        if (!stickerImgCache[st.id]) {
+          const img = new Image(); img.src = st.image_url;
+          stickerImgCache[st.id] = img;
+        }
+        const img = stickerImgCache[st.id];
+        if (img.complete && img.naturalWidth > 0) {
+          const near = Math.hypot(player.x - st.world_x, player.y - st.world_y) < 52 * S;
+          const r = near ? 52 * S : 40 * S;
+          ctx.save();
+          // Sombra ao passar por cima
+          if (near) {
+            ctx.shadowColor = 'rgba(200, 180, 255, 0.5)';
+            ctx.shadowBlur = 14 * S;
+          }
+          ctx.drawImage(img, sx - r, sy - r, r * 2, r * 2);
+          ctx.restore();
+        }
+      }
+      ctx.save(); ctx.globalAlpha = .22; ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(player.x - cam.x, player.y - cam.y + 13 * S, 9 * S, 4 * S, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      drawPlayer(player.x - cam.x, player.y - cam.y);
+      drawMinimap(cam);
+    }
+
+    function drawPlayer(px, py) {
+      const bob = player.moving ? Math.sin(Date.now() / 80) * 2 * S : 0;
+      const run = held.has('Shift') && player.moving;
+      const swing = player.moving ? Math.sin(Date.now() / (run ? 50 : 75)) : 0;
+      ctx.save(); ctx.shadowColor = playerColor + '88'; ctx.shadowBlur = 0;
+      ctx.strokeStyle = playerColor; ctx.lineWidth = 2 * S; ctx.lineCap = 'square';
+      // pernas
+      const leg = player.moving ? swing * (run ? 6 * S : 4 * S) : 0;
+      ctx.fillStyle = playerColor + 'bb';
+      ctx.fillRect(px - 4 * S, py + 5 * S + bob, 3 * S, 6 * S + leg);
+      ctx.fillRect(px + 1 * S, py + 5 * S + bob, 3 * S, 6 * S - leg);
+      // corpo
+      ctx.fillStyle = playerColor; ctx.fillRect(px - 5 * S, py - 4 * S + bob, 10 * S, 10 * S);
+      // braços
+      if (run) {
+        if (player.dir === 2) {
+          ctx.beginPath(); ctx.moveTo(px - 4 * S, py - 2 * S + bob); ctx.lineTo(px - 6 * S, py - 7 * S + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px + 4 * S, py - 2 * S + bob); ctx.lineTo(px + 6 * S, py - 7 * S + bob); ctx.stroke();
+        } else if (player.dir === 0) {
+          ctx.beginPath(); ctx.moveTo(px - 4 * S, py - 2 * S + bob); ctx.lineTo(px - 6 * S, py + 5 * S + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px + 4 * S, py - 2 * S + bob); ctx.lineTo(px + 6 * S, py + 5 * S + bob); ctx.stroke();
+        } else if (player.dir === 3) {
+          ctx.beginPath(); ctx.moveTo(px - 4 * S, py - 1 * S + bob); ctx.lineTo(px - 9 * S, py + 3 * S + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px + 4 * S, py - 1 * S + bob); ctx.lineTo(px + 0, py + 4 * S + bob); ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.moveTo(px + 4 * S, py - 1 * S + bob); ctx.lineTo(px + 9 * S, py + 3 * S + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px - 4 * S, py - 1 * S + bob); ctx.lineTo(px + 0, py + 4 * S + bob); ctx.stroke();
+        }
+      } else {
+        const as = player.moving ? swing * S : 0;
+        if (player.dir === 2 || player.dir === 0) {
+          ctx.beginPath(); ctx.moveTo(px - 5 * S, py - 1 * S + bob); ctx.lineTo(px - 7 * S, py + 4 * S + as + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px + 5 * S, py - 1 * S + bob); ctx.lineTo(px + 7 * S, py + 4 * S - as + bob); ctx.stroke();
+        } else if (player.dir === 3) {
+          ctx.beginPath(); ctx.moveTo(px + 5 * S, py - 1 * S + bob); ctx.lineTo(px + 7 * S, py + 4 * S + as + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px - 5 * S, py - 1 * S + bob); ctx.lineTo(px - 6 * S, py + 4 * S - as + bob); ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.moveTo(px - 5 * S, py - 1 * S + bob); ctx.lineTo(px - 7 * S, py + 4 * S + as + bob); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(px + 5 * S, py - 1 * S + bob); ctx.lineTo(px + 6 * S, py + 4 * S - as + bob); ctx.stroke();
+        }
+      }
+      // cabeça
+      ctx.fillStyle = playerColor + 'dd'; ctx.beginPath(); ctx.arc(px, py - 10 * S + bob, 6 * S, 0, Math.PI * 2); ctx.fill();
+      // olhos (sem olhos de costas: dir===0)
+      ctx.fillStyle = '#1a1538';
+      if (player.dir === 2) { ctx.fillRect(px - 3 * S, py - 11 * S + bob, 2 * S, 2 * S); ctx.fillRect(px + 1 * S, py - 11 * S + bob, 2 * S, 2 * S); }
+      if (player.dir === 3) ctx.fillRect(px + 2 * S, py - 11 * S + bob, 2 * S, 2 * S);
+      if (player.dir === 1) ctx.fillRect(px - 4 * S, py - 11 * S + bob, 2 * S, 2 * S);
+      ctx.restore();
+    }
+
+    function drawMinimap(cam) {
+      const MM = { x: canvas.width - 210, y: 10, w: 192, h: 132 };
+      const scx = MM.w / WORLD_W, scy = MM.h / WORLD_H;
+      ctx.fillStyle = 'rgba(4,8,20,.85)'; ctx.strokeStyle = 'rgba(80,130,220,.25)'; ctx.lineWidth = .5;
+      ctx.beginPath(); ctx.roundRect(MM.x - 2, MM.y - 2, MM.w + 4, MM.h + 4, 4); ctx.fill(); ctx.stroke();
+      ctx.drawImage(mmCvs, MM.x, MM.y, MM.w, MM.h);
+      ctx.strokeStyle = 'rgba(255,255,180,.15)'; ctx.lineWidth = .5;
+      ctx.strokeRect(MM.x + cam.x * scx, MM.y + cam.y * scy, cam.w * scx, cam.h * scy);
+      for (const s of spots) {
+        if (s.is_secret) continue; // locais secretos não aparecem no minimapa
+        const near = nearSpot && nearSpot.id === s.id;
+        ctx.fillStyle = near ? '#ffd000' : 'rgba(255,200,0,.75)';
+        ctx.beginPath(); ctx.arc(MM.x + s.world_x * scx, MM.y + s.world_y * scy, near ? 3 : 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(MM.x + player.x * scx, MM.y + player.y * scy, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawSecretSpot(sx, sy, near, now) {
+      const pulse = near ? 0.7 + Math.sin(now / 180) * 0.3 : 0.25 + Math.sin(now / 1600 + sx) * 0.08;
+      const sc = S;
+
+      // glow exterior
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.45;
+      const grd = ctx.createRadialGradient(sx, sy, 2 * sc, sx, sy, near ? 28 * sc : 18 * sc);
+      grd.addColorStop(0, 'rgba(255,200,60,0.55)');
+      grd.addColorStop(1, 'rgba(255,160,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(sx, sy, near ? 28 * sc : 18 * sc, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // anel tracejado giratório
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = near ? '#ffd060' : 'rgba(220,160,40,0.5)';
+      ctx.lineWidth = near ? 1.5 * sc : sc;
+      ctx.setLineDash([3 * sc, 4 * sc]);
+      ctx.lineDashOffset = -now / 50;
+      ctx.beginPath(); ctx.arc(sx, sy, near ? 17 * sc : 12 * sc, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // cadeado — corpo (retângulo arredondado)
+      const bw = 9 * sc, bh = 7 * sc;
+      const bx = sx - bw / 2, by = sy - 1 * sc;
+      ctx.save();
+      ctx.globalAlpha = near ? 1 : 0.75;
+      ctx.fillStyle = near ? '#ffd060' : '#c89030';
+      ctx.strokeStyle = near ? '#fff8d0' : 'rgba(255,220,100,0.4)';
+      ctx.lineWidth = 0.8 * sc;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, 1.5 * sc);
+      ctx.fill(); ctx.stroke();
+
+      // buraco da fechadura
+      ctx.fillStyle = near ? '#100800' : '#1a1000';
+      ctx.beginPath(); ctx.arc(sx, by + bh * 0.38, 1.6 * sc, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(sx - 0.9 * sc, by + bh * 0.38, 1.8 * sc, 2.2 * sc);
+
+      // arco superior do cadeado
+      ctx.strokeStyle = near ? '#ffd060' : '#c89030';
+      ctx.lineWidth = 2 * sc;
+      ctx.lineCap = 'round';
+      ctx.fillStyle = 'transparent';
+      ctx.beginPath();
+      ctx.arc(sx, by, 3.8 * sc, Math.PI, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  MEMORY MODAL  — view + edit
+    // ═══════════════════════════════════════════════════════
+    let vOpen = false, openSpot = null;
+
+    function openV(spot) {
+      // se é secreto e veio direto do mapa (não do unlock), pede senha
+      if (spot.is_secret && !_secretUnlockSpot) {
+        openSecretUnlock(spot);
+        return;
+      }
+      _secretUnlockSpot = null;
+      vOpen = true; openSpot = spot; held.clear();
+      buildV(spot);
+      document.getElementById('vmodal').classList.add('open');
+      // Música do local
+      if (spot.music_url) playSpotMusic(spot.music_url);
+    }
+    function closeV() {
+      cancelEditName();
+      vOpen = false; openSpot = null;
+      document.getElementById('vmodal').classList.remove('open');
+      held.clear();
+      stopSpotMusic();
+      spotMuted = false;
+    }
+
+    function buildV(spot) {
+      const nd = document.getElementById('vname-display');
+      const ni = document.getElementById('vname-input');
+      nd.textContent = spot.name; nd.style.display = ''; ni.value = spot.name; document.getElementById('vname-edit-form').style.display = 'none';
+
+      // barra de música do local
+      const vm = document.getElementById('vspot-music'); vm.innerHTML = '';
+      const mbar = document.createElement('div'); mbar.className = 'spot-music-bar';
+      const mname = document.createElement('span'); mname.className = 'music-name' + (spot.music_url ? ' playing' : '');
+      mname.textContent = spot.music_url ? '♪ ' + (spot.music_name || 'Música do local') : '♪ Sem música';
+      const mupBtn = document.createElement('button'); mupBtn.className = 'btn-music'; mupBtn.textContent = spot.music_url ? '↺ Trocar' : '＋ Música';
+      const mRmBtn = spot.music_url ? document.createElement('button') : null;
+      if (mRmBtn) { mRmBtn.className = 'btn-music'; mRmBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>'; mRmBtn.title = 'Remover música'; }
+      const muteBtn = spot.music_url ? document.createElement('button') : null;
+      if (muteBtn) { muteBtn.className = 'btn-music' + (spotMuted ? ' active' : ''); muteBtn.textContent = spotMuted ? '🔇' : '🔊'; muteBtn.title = 'Mutar música'; }
+
+      // upload de música
+      const mInput = document.createElement('input'); mInput.type = 'file'; mInput.accept = 'audio/*'; mInput.style.display = 'none';
+      mInput.addEventListener('change', async function () {
+        const f = this.files[0]; if (!f) return;
+        const fd = new FormData(); fd.append('spot_id', spot.id); fd.append('music', f);
+        const res = await fetch(API + '?action=spot_music_upload', { method: 'POST', body: fd }).then(r => r.json());
+        if (res.ok) {
+          await loadSpots();
+          const s = spots.find(x => x.id === spot.id); if (s) { openSpot = s; buildV(s); playSpotMusic(res.music_url); }
+        } else { alert('Erro: ' + (res.error || 'desconhecido')); }
+      });
+      mupBtn.addEventListener('click', () => mInput.click());
+      if (mRmBtn) {
+        mRmBtn.addEventListener('click', async () => {
+          const ok = await askConfirm('Remover música deste local?', { confirmText: 'remover', confirmClass: 'btn-red' });
+          if (!ok) return;
+          const res = await api('spot_music_remove', { id: spot.id });
+          if (res.ok) { stopSpotMusic(); await loadSpots(); const s = spots.find(x => x.id === spot.id); if (s) { openSpot = s; buildV(s); } }
+        });
+      }
+      if (muteBtn) {
+        muteBtn.addEventListener('click', () => {
+          setSpotMuted(!spotMuted);
+          muteBtn.textContent = spotMuted ? '🔇' : '🔊';
+          muteBtn.classList.toggle('active', spotMuted);
+        });
+      }
+
+      mbar.appendChild(mname);
+      mbar.appendChild(mInput);
+      mbar.appendChild(mupBtn);
+      if (muteBtn) mbar.appendChild(muteBtn);
+      if (mRmBtn) mbar.appendChild(mRmBtn);
+      vm.appendChild(mbar);
+
+      // botões do cabeçalho: lápis + lixeira
+      const ha = document.getElementById('vhead-actions'); ha.innerHTML = '';
+      const editNameBtn = document.createElement('button'); editNameBtn.className = 'edit-btn'; editNameBtn.textContent = '✎'; editNameBtn.title = 'Renomear local';
+      editNameBtn.addEventListener('click', () => startEditName());
+      const delBtn = document.createElement('button'); delBtn.className = 'trash-btn'; delBtn.innerHTML = TRASH_ICO; delBtn.title = 'Excluir local';
+      delBtn.addEventListener('click', async () => {
+        const ok = await askConfirm('Excluir "' + spot.name + '" e todas as memórias?');
+        if (!ok) return;
+        const res = await api('spot_delete', { id: spot.id });
+        if (res.ok) { await loadSpots(); closeV(); }
+      });
+      ha.appendChild(editNameBtn);
+      ha.appendChild(delBtn);
+
+      // entries
+      const vb = document.getElementById('vbody'); vb.innerHTML = '';
+      (spot.memories || []).forEach((m, i) => vb.appendChild(makeEntryEl(spot, m, i)));
+
+      document.getElementById('vcount').textContent = (spot.memories || []).length + ' memória' + ((spot.memories || []).length !== 1 ? 's' : '');
+    }
+
+    function makeEntryEl(spot, mem, i) {
+      const frag = document.createDocumentFragment();
+      if (i > 0) { const sep = document.createElement('div'); sep.className = 'vrowsep'; frag.appendChild(sep); }
+      const row = document.createElement('div'); row.className = 'vrow' + (mem.reversed ? ' rev' : '');
+
+      // photo
+      const photo = document.createElement('div'); photo.className = 'vphoto';
+      if (mem.image_url) photo.innerHTML = `<img src="${mem.image_url}">`;
+      else photo.textContent = mem.icon || '➕';
+      const pov = document.createElement('div'); pov.className = 'vphoto-ov';
+
+      const upBtn = document.createElement('button'); upBtn.className = 'btn-photo';
+      upBtn.textContent = mem.image_url ? '↺ trocar' : '＋ Foto';
+      upBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        triggerUpload(mem.id, spot.id);
+      });
+      pov.appendChild(upBtn);
+
+      if (mem.image_url) {
+        const rmBtn = document.createElement('button'); rmBtn.className = 'btn btn-red btn-sm'; rmBtn.textContent = '✕ remover';
+        rmBtn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const res = await api('memory_remove_img', { id: mem.id });
+          if (res.ok) { await loadSpots(); const s = spots.find(x => x.id === spot.id); if (s) { openSpot = s; buildV(s); } }
+        });
+        pov.appendChild(rmBtn);
+      }
+      photo.appendChild(pov);
+
+      // text
+      const text = document.createElement('div'); text.className = 'vtext';
+      const corner = document.createElement('div'); corner.className = 'entry-corner';
+      const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = '✎';
+      const delEntBtn = document.createElement('button'); delEntBtn.className = 'trash-btn'; delEntBtn.innerHTML = TRASH_ICO;
+      corner.appendChild(editBtn); corner.appendChild(delEntBtn);
+
+      const titleD = document.createElement('div'); titleD.className = 'vtitle'; titleD.textContent = mem.title;
+      const descD = document.createElement('div'); descD.className = 'vdesc'; descD.textContent = mem.body || '';
+
+      const form = document.createElement('div'); form.className = 'vedit-zone';
+      const titleIn = document.createElement('input'); titleIn.className = 'vf-in'; titleIn.placeholder = 'Título…'; titleIn.value = mem.title;
+      const descIn = document.createElement('textarea'); descIn.className = 'vf-in'; descIn.placeholder = 'Descrição…'; descIn.value = mem.body || '';
+      const fbtns = document.createElement('div'); fbtns.className = 'vedit-btns';
+      const saveBtn = document.createElement('button'); saveBtn.className = 'btn btn-blue btn-sm'; saveBtn.textContent = 'Salvar';
+      const cancelBtn = document.createElement('button'); cancelBtn.className = 'btn btn-red btn-sm'; cancelBtn.textContent = 'Cancelar';
+      fbtns.appendChild(cancelBtn); fbtns.appendChild(saveBtn);
+      form.appendChild(titleIn); form.appendChild(descIn); form.appendChild(fbtns);
+      text.appendChild(corner); text.appendChild(titleD); text.appendChild(descD); text.appendChild(form);
+      row.appendChild(photo); row.appendChild(text);
+      frag.appendChild(row);
+
+      // events
+      editBtn.addEventListener('click', () => {
+        const open = form.classList.contains('active');
+        document.querySelectorAll('.vedit-zone').forEach(f => f.classList.remove('active'));
+        if (!open) { form.classList.add('active'); setTimeout(() => titleIn.focus(), 30); }
+      });
+      cancelBtn.addEventListener('click', () => form.classList.remove('active'));
+      saveBtn.addEventListener('click', async () => {
+        const res = await api('memory_update', { id: mem.id, title: titleIn.value.trim() || mem.title, body: descIn.value.trim() });
+        if (res.ok) { await loadSpots(); const s = spots.find(x => x.id === spot.id); if (s) { openSpot = s; buildV(s); } }
+      });
+      delEntBtn.addEventListener('click', async () => {
+        const ok = await askConfirm('Excluir esta memória?');
+        if (!ok) return;
+        const res = await api('memory_delete', { id: mem.id });
+        if (res.ok) { await loadSpots(); const s = spots.find(x => x.id === spot.id); if (s) { openSpot = s; buildV(s); } else closeV(); }
+      });
+
+      return frag;
+    }
+
+    // ── GLOBAL UPLOAD TRIGGER ────────────────────────────────────
+    // Using a single hidden input avoids pointer-events/iframe/label bugs
+    const globalFileInput = document.getElementById('global-file-input');
+    let _uploadMemId = null, _uploadSpotId = null;
+
+    function triggerUpload(memId, spotId) {
+      _uploadMemId = memId;
+      _uploadSpotId = spotId;
+      globalFileInput.value = ''; // reset so same file can be re-selected
+      globalFileInput.click();
+    }
+
+    // Ao selecionar arquivo, abrir crop
+    globalFileInput.addEventListener('change', function () {
+      const f = this.files[0];
+      if (!f || !_uploadMemId) return;
+      openCropModal(f);
+    });
+
+    // ── CROP ENGINE ──────────────────────────────────────────
+    let _cropBox = { x: 0, y: 0, w: 100, h: 100 };
+    let _cropScale = 1;
+    let _cropDrag = null;
+    const MIN_CROP = 20;
+
+    function openCropModal(file) {
+      const url = URL.createObjectURL(file);
+      const img = document.getElementById('crop-img');
+      img.onload = () => {
+        const dw = img.offsetWidth, dh = img.offsetHeight;
+        _cropScale = img.naturalWidth / dw;
+        const m = 0.1;
+        _cropBox = { x: dw * m, y: dh * m, w: dw * (1 - 2 * m), h: dh * (1 - 2 * m) };
+        updateCropBox();
+      };
+      img.src = url;
+      document.getElementById('crop-overlay').classList.add('open');
+    }
+
+    function updateCropBox() {
+      const b = document.getElementById('crop-box');
+      b.style.left = _cropBox.x + 'px'; b.style.top = _cropBox.y + 'px';
+      b.style.width = _cropBox.w + 'px'; b.style.height = _cropBox.h + 'px';
+    }
+
+    function clampBox(box) {
+      const img = document.getElementById('crop-img');
+      const dw = img.offsetWidth, dh = img.offsetHeight;
+      box.w = Math.max(MIN_CROP, Math.min(box.w, dw));
+      box.h = Math.max(MIN_CROP, Math.min(box.h, dh));
+      box.x = Math.max(0, Math.min(box.x, dw - box.w));
+      box.y = Math.max(0, Math.min(box.y, dh - box.h));
+      return box;
+    }
+
+    function getCropPointer(e) {
+      const rect = document.getElementById('crop-wrap').getBoundingClientRect();
+      return {
+        cx: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+        cy: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+      };
+    }
+
+    const _cropBoxEl = document.getElementById('crop-box');
+    _cropBoxEl.addEventListener('mousedown', e => { e.preventDefault(); const { cx, cy } = getCropPointer(e); _cropDrag = { type: 'move', sx: cx, sy: cy, bx: _cropBox.x, by: _cropBox.y, bw: _cropBox.w, bh: _cropBox.h }; });
+    _cropBoxEl.addEventListener('touchstart', e => { e.preventDefault(); const { cx, cy } = getCropPointer(e); _cropDrag = { type: 'move', sx: cx, sy: cy, bx: _cropBox.x, by: _cropBox.y, bw: _cropBox.w, bh: _cropBox.h }; }, { passive: false });
+    document.querySelectorAll('.crop-handle').forEach(h => {
+      const sd = e => { e.preventDefault(); e.stopPropagation(); const { cx, cy } = getCropPointer(e); _cropDrag = { type: h.dataset.h, sx: cx, sy: cy, bx: _cropBox.x, by: _cropBox.y, bw: _cropBox.w, bh: _cropBox.h }; };
+      h.addEventListener('mousedown', sd);
+      h.addEventListener('touchstart', sd, { passive: false });
+    });
+
+    function doCropMove(e) {
+      if (!_cropDrag) return;
+      if (e.cancelable) e.preventDefault();
+      const { cx, cy } = getCropPointer(e);
+      const dx = cx - _cropDrag.sx, dy = cy - _cropDrag.sy;
+      const { type, bx, by, bw, bh } = _cropDrag;
+      let nb = { x: bx, y: by, w: bw, h: bh };
+      if (type === 'move') { nb.x = bx + dx; nb.y = by + dy; }
+      else if (type === 'tl') { nb.x = bx + dx; nb.y = by + dy; nb.w = bw - dx; nb.h = bh - dy; }
+      else if (type === 'tr') { nb.y = by + dy; nb.w = bw + dx; nb.h = bh - dy; }
+      else if (type === 'bl') { nb.x = bx + dx; nb.w = bw - dx; nb.h = bh + dy; }
+      else if (type === 'br') { nb.w = bw + dx; nb.h = bh + dy; }
+      _cropBox = clampBox(nb); updateCropBox();
+    }
+    window.addEventListener('mousemove', doCropMove);
+    window.addEventListener('touchmove', doCropMove, { passive: false });
+    window.addEventListener('mouseup', () => { _cropDrag = null; });
+    window.addEventListener('touchend', () => { _cropDrag = null; });
+
+    function closeCropModal() {
+      document.getElementById('crop-overlay').classList.remove('open');
+      _uploadMemId = null; _uploadSpotId = null;
+      const btn = document.getElementById('crop-confirm-btn');
+      btn.disabled = false; btn.textContent = 'Confirmar';
+    }
+    document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
+
+    document.getElementById('crop-confirm-btn').addEventListener('click', () => {
+      const img = document.getElementById('crop-img');
+      const sc = _cropScale;
+      const cvs = document.createElement('canvas');
+      cvs.width = Math.round(_cropBox.w * sc);
+      cvs.height = Math.round(_cropBox.h * sc);
+      cvs.getContext('2d').drawImage(img, _cropBox.x * sc, _cropBox.y * sc, cvs.width, cvs.height, 0, 0, cvs.width, cvs.height);
+      const btn = document.getElementById('crop-confirm-btn');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      const spotId = _uploadSpotId, memId = _uploadMemId;
+      cvs.toBlob(async blob => {
+        const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
+        let res;
+        try { res = await apiUpload(memId, file); }
+        catch (e) { alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = 'Confirmar'; return; }
+        if (res.ok) {
+          closeCropModal();
+          await loadSpots();
+          const s = spots.find(x => x.id === spotId);
+          if (s) { openSpot = s; buildV(s); }
+        } else {
+          alert('Erro: ' + (res.error || 'desconhecido'));
+          btn.disabled = false; btn.textContent = 'Confirmar';
+        }
+      }, 'image/jpeg', 0.92);
+    });
+
+    async function addEntry() {
+      if (!openSpot) return;
+      const res = await api('memory_create', { spot_id: openSpot.id });
+      if (res.ok) {
+        await loadSpots();
+        const s = spots.find(x => x.id === openSpot.id); if (s) { openSpot = s; buildV(s); }
+        const vb = document.getElementById('vbody'); vb.scrollTop = vb.scrollHeight;
+      }
+    }
+
+    // ── EDIÇÃO DE NOME ────────────────────────────────────────
+    // ── EDIÇÃO DE NOME DO LOCAL ──────────────────────────────
+    function startEditName() {
+      if (!openSpot) return;
+      const nd = document.getElementById('vname-display');
+      const form = document.getElementById('vname-edit-form');
+      const ni = document.getElementById('vname-input');
+      ni.value = openSpot.name;
+      nd.style.display = 'none';
+      form.style.display = 'flex';
+      setTimeout(() => { ni.focus(); ni.select(); }, 30);
+    }
+
+    async function saveEditName() {
+      if (!openSpot) return;
+      const nd = document.getElementById('vname-display');
+      const form = document.getElementById('vname-edit-form');
+      const ni = document.getElementById('vname-input');
+      const val = ni.value.trim() || openSpot.name;
+      form.style.display = 'none';
+      nd.style.display = '';
+      nd.textContent = val;
+      if (val !== openSpot.name) {
+        await api('spot_update', { id: openSpot.id, name: val });
+        openSpot.name = val;
+        await loadSpots();
+      }
+    }
+
+    function cancelEditName() {
+      const nd = document.getElementById('vname-display');
+      const form = document.getElementById('vname-edit-form');
+      if (!form) return;
+      form.style.display = 'none';
+      if (nd) nd.style.display = '';
+    }
+
+    document.getElementById('vname-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); saveEditName(); }
+      if (e.key === 'Escape') { cancelEditName(); }
+    });
+    document.getElementById('vname-save-btn').addEventListener('click', () => saveEditName());
+    document.getElementById('vname-cancel-btn').addEventListener('click', () => cancelEditName());
+
+    // ═══════════════════════════════════════════════════════
+    //  PANEL
+    // ═══════════════════════════════════════════════════════
+    let panelOpen = false;
+    function openPanel() { panelOpen = true; held.clear(); document.getElementById('pmodal').classList.add('open'); document.getElementById('pfbtn').textContent = '✕'; }
+    function closePanel() { panelOpen = false; document.getElementById('pmodal').classList.remove('open'); document.getElementById('pfbtn').textContent = '⚙ Painel'; }
+    function restartPos() { player.x = 1600; player.y = 1000; closePanel(); held.clear(); }
+
+    // ═══════════════════════════════════════════════════════
+    //  LOOP
+    // ═══════════════════════════════════════════════════════
+    function loop() {
+      const frozen = vOpen || panelOpen;
+      if (!frozen) {
+        let dx = moveDX(), dy = moveDY();
+        if (dx && dy) { dx *= .707; dy *= .707; }
+        player.moving = !!(dx || dy);
+        if (player.moving) {
+          if (dx < 0) player.dir = 1; else if (dx > 0) player.dir = 3;
+          else if (dy < 0) player.dir = 0; else player.dir = 2;
+          const spd = held.has('Shift') ? RUN : WALK;
+          player.x = Math.max(20, Math.min(WORLD_W - 20, player.x + dx * spd));
+          player.y = Math.max(20, Math.min(WORLD_H - 20, player.y + dy * spd));
+        }
+        nearSpot = null;
+        for (const s of spots) if (Math.hypot(player.x - s.world_x, player.y - s.world_y) < 52 * S) { nearSpot = s; break; }
+      } else player.moving = false;
+      document.getElementById('runind').style.opacity = (held.has('Shift') && player.moving && !frozen) ? '1' : '0';
+      drawFrame();
+      requestAnimationFrame(loop);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  ENGINE DE ÁUDIO — fade entre música principal e local
+    // ═══════════════════════════════════════════════════════
+    let spotAudio = null;
+    let spotMuted = false;
+    const FADE_DURATION = 1200; // ms
+    let _bgmFadeTimer = null;
+
+    function fadeVolume(audio, fromVol, toVol, duration, onDone) {
+      const steps = 40;
+      const interval = duration / steps;
+      const delta = (toVol - fromVol) / steps;
+      let step = 0;
+      clearInterval(audio._fadeTimer);
+      audio._fadeTimer = setInterval(() => {
+        step++;
+        audio.volume = Math.min(1, Math.max(0, fromVol + delta * step));
+        if (step >= steps) {
+          clearInterval(audio._fadeTimer);
+          audio.volume = toVol;
+          if (onDone) onDone();
+        }
+      }, interval);
+    }
+
+    function playSpotMusic(url) {
+      // Para música anterior do local se houver
+      if (spotAudio) {
+        spotAudio.pause();
+        spotAudio.src = '';
+        spotAudio = null;
+      }
+      // Esmaece música principal
+      fadeVolume(bgm, bgm.volume, 0, FADE_DURATION, () => { bgm.pause(); bgm.volume = 0; });
+      // Cria e toca música do local
+      spotAudio = new Audio(url);
+      spotAudio.loop = true;
+      const _spotVol = parseFloat(document.getElementById('vol-spot-slider').value) / 100;
+      spotAudio.volume = spotMuted ? 0 : _spotVol;
+      spotAudio.play().catch(() => { });
+    }
+
+    function stopSpotMusic() {
+      if (!spotAudio) return;
+      const sa = spotAudio;
+      spotAudio = null;
+      // Esmaece música do local
+      fadeVolume(sa, sa.volume, 0, FADE_DURATION, () => { sa.pause(); sa.src = ''; });
+      // Volta música principal
+      const savedVol = parseFloat(document.getElementById('vol-slider').value) / 100;
+      bgm.volume = 0;
+      bgm.play().catch(() => { });
+      fadeVolume(bgm, 0, savedVol, FADE_DURATION);
+    }
+
+    function setSpotMuted(muted) {
+      spotMuted = muted;
+      if (muted) {
+        const _sv = parseFloat(document.getElementById('vol-spot-slider').value) / 100;
+        if (spotAudio) { spotAudio.volume = 0; spotAudio.pause(); }
+        const savedVol = parseFloat(document.getElementById('vol-slider').value) / 100;
+        bgm.volume = 0;
+        bgm.play().catch(() => { });
+        fadeVolume(bgm, 0, savedVol, FADE_DURATION);
+      } else {
+        fadeVolume(bgm, bgm.volume, 0, FADE_DURATION, () => { bgm.pause(); bgm.volume = 0; });
+        const _sv = parseFloat(document.getElementById('vol-spot-slider').value) / 100;
+        if (spotAudio) { spotAudio.volume = _sv; spotAudio.play().catch(() => { }); }
+      }
+    }
+
+    // ── MODAL DE ADESIVO ────────────────────────────────────
+    let _stickerX = 0, _stickerY = 0, _stickerFile = null;
+
+    function openStickerModal(wx, wy) {
+      _stickerX = wx; _stickerY = wy; _stickerFile = null;
+      document.getElementById('sticker-preview').style.display = 'none';
+      document.getElementById('sticker-confirm-btn').disabled = true;
+      document.getElementById('sticker-modal').classList.add('open');
+      held.clear();
+    }
+    function closeStickerModal() {
+      document.getElementById('sticker-modal').classList.remove('open');
+      _stickerFile = null;
+    }
+
+    document.getElementById('sticker-close-btn').addEventListener('click', closeStickerModal);
+    document.getElementById('sticker-cancel-btn').addEventListener('click', closeStickerModal);
+
+    document.getElementById('sticker-pick-btn').addEventListener('click', () => {
+      document.getElementById('sticker-file-input').value = '';
+      document.getElementById('sticker-file-input').click();
+    });
+
+    document.getElementById('sticker-file-input').addEventListener('change', function () {
+      const f = this.files[0]; if (!f) return;
+      _stickerFile = f;
+      const url = URL.createObjectURL(f);
+      const prev = document.getElementById('sticker-preview');
+      prev.src = url; prev.style.display = 'block';
+      document.getElementById('sticker-confirm-btn').disabled = false;
+    });
+
+    document.getElementById('sticker-confirm-btn').addEventListener('click', async () => {
+      if (!_stickerFile) return;
+      const btn = document.getElementById('sticker-confirm-btn');
+      btn.disabled = true; btn.textContent = 'enviando…';
+      const fd = new FormData();
+      fd.append('world_x', _stickerX);
+      fd.append('world_y', _stickerY);
+      fd.append('image', _stickerFile);
+      try {
+        const res = await fetch(API + '?action=sticker_upload', { method: 'POST', body: fd }).then(r => r.json());
+        if (res.ok) { btn.disabled = false; btn.textContent = 'Confirmar'; closeStickerModal(); await loadSpots(); }
+        else { alert('Erro: ' + (res.error || 'desconhecido')); btn.disabled = false; btn.textContent = 'colocar no mapa'; }
+      } catch (e) { alert('Erro de conexão'); btn.disabled = false; btn.textContent = 'colocar no mapa'; }
+    });
+
+    // ── BOOT ──
+    const bgm = new Audio('./assets/musica.mp3');
+    bgm.loop = true;
+    bgm.preload = 'auto';
+
+    // Volumes salvos (padrão: principal 10%, locais 100%)
+    const _vBgm = parseFloat(localStorage.getItem('vol_bgm') ?? '10');
+    const _vSpot = parseFloat(localStorage.getItem('vol_spot') ?? '100');
+    bgm.volume = _vBgm / 100;
+    document.getElementById('vol-slider').value = _vBgm;
+    document.getElementById('vol-display').textContent = _vBgm + '%';
+    document.getElementById('vol-spot-slider').value = _vSpot;
+    document.getElementById('vol-spot-display').textContent = _vSpot + '%';
+
+    // Autoplay robusto
+    let bgmStarted = false;
+    function tryPlayBgm() {
+      if (bgmStarted) return;
+      bgm.play().then(() => { bgmStarted = true; }).catch(() => {
+        const r = () => { if (bgmStarted) return; bgm.play().then(() => { bgmStarted = true; }).catch(() => { });['keydown', 'click', 'pointerdown'].forEach(ev => document.removeEventListener(ev, r)); };
+        ['keydown', 'click', 'pointerdown'].forEach(ev => document.addEventListener(ev, r));
+      });
+    }
+    bgm.addEventListener('canplaythrough', tryPlayBgm);
+    tryPlayBgm();
+
+    // Slider música principal
+    document.getElementById('vol-slider').addEventListener('input', function () {
+      bgm.volume = this.value / 100;
+      document.getElementById('vol-display').textContent = this.value + '%';
+      localStorage.setItem('vol_bgm', this.value);
+    });
+
+    // Slider música dos locais
+    document.getElementById('vol-spot-slider').addEventListener('input', function () {
+      document.getElementById('vol-spot-display').textContent = this.value + '%';
+      localStorage.setItem('vol_spot', this.value);
+      if (spotAudio && !spotMuted) spotAudio.volume = this.value / 100;
+    });
+
+    document.getElementById('player-color-picker').value = playerColor;
+    document.getElementById('player-color-picker').addEventListener('input', function () {
+      playerColor = this.value;
+      localStorage.setItem('player_color', playerColor);
+    });
+
+    // ── LOCAIS SECRETOS ──────────────────────────────────────
+    let _secretUnlockSpot = null;
+
+    function openSecretCreate() {
+      document.getElementById('secret-name-in').value = '';
+      document.getElementById('secret-pw-in').value = '';
+      document.getElementById('secret-pw2-in').value = '';
+      document.getElementById('secret-create-err').textContent = '';
+      document.getElementById('secret-create-modal').style.display = 'flex';
+      held.clear();
+      setTimeout(() => document.getElementById('secret-name-in').focus(), 30);
+    }
+    function closeSecretCreate() {
+      document.getElementById('secret-create-modal').style.display = 'none';
+    }
+
+    async function submitSecretCreate() {
+      const name = document.getElementById('secret-name-in').value.trim();
+      const pw = document.getElementById('secret-pw-in').value;
+      const pw2 = document.getElementById('secret-pw2-in').value;
+      const err = document.getElementById('secret-create-err');
+      if (!name) { err.textContent = 'Dê um nome ao local.'; return; }
+      if (!pw) { err.textContent = 'Defina uma senha.'; return; }
+      if (pw !== pw2) { err.textContent = 'As senhas não coincidem.'; return; }
+      const data = await api('spot_create', { name, x: player.x, y: player.y, is_secret: true, secret_password: pw });
+      if (!data.ok) { err.textContent = data.error || 'Erro ao criar.'; return; }
+      closeSecretCreate();
+      await loadSpots();
+      const newSpot = spots.find(s => s.id === data.id);
+      if (newSpot) setTimeout(() => openSecretUnlock(newSpot, true), 80);
+    }
+
+    function openSecretUnlock(spot, skipCheck = false) {
+      _secretUnlockSpot = spot;
+      document.getElementById('unlock-pw-in').value = '';
+      document.getElementById('unlock-err').textContent = '';
+      document.getElementById('secret-unlock-modal').style.display = 'flex';
+      held.clear();
+      setTimeout(() => document.getElementById('unlock-pw-in').focus(), 30);
+      // se acabou de criar, entra direto sem pedir senha
+      if (skipCheck) {
+        document.getElementById('secret-unlock-modal').style.display = 'none';
+        openV(spot);
+      }
+    }
+    function closeSecretUnlock() {
+      document.getElementById('secret-unlock-modal').style.display = 'none';
+      _secretUnlockSpot = null;
+    }
+
+    async function submitSecretUnlock() {
+      const pw = document.getElementById('unlock-pw-in').value;
+      const err = document.getElementById('unlock-err');
+      if (!pw) { err.textContent = 'Digite a senha.'; return; }
+      const res = await api('spot_unlock', { id: _secretUnlockSpot.id, password: pw });
+      if (!res.ok) { err.textContent = 'Senha incorreta.'; document.getElementById('unlock-pw-in').value = ''; document.getElementById('unlock-pw-in').focus(); return; }
+      const spot = _secretUnlockSpot;
+      closeSecretUnlock();
+      vOpen = true; openSpot = spot; held.clear();
+      buildV(spot);
+      document.getElementById('vmodal').classList.add('open');
+      if (spot.music_url) playSpotMusic(spot.music_url);
+    }
+
+    // Enter no campo de senha desbloqueia
+    document.getElementById('unlock-pw-in').addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitSecretUnlock();
+      if (e.key === 'Escape') closeSecretUnlock();
+    });
+    document.getElementById('secret-pw2-in').addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitSecretCreate();
+      if (e.key === 'Escape') closeSecretCreate();
+    });
+
+    checkAuth();
+  </script>
+</body>
+
+</html>
